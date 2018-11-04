@@ -36,6 +36,7 @@ module branch_predictor(
     reg [31:0] tmp_out_addr = 31'b0; // Helper address of a temporary target branch.
     reg tmp_out_valid = 1'b0;        // Helper flag that indicates if a prediction is valid.
     reg addr_found = 1'b0;           // Flag that indicates if a given PC appears in the in_addr_array table.
+	integer entry_to_replace = 0;	 // Index of address table entry to replace.
     
     
     // (FETCH) Return a prediction if provided PC appears in the in_addr_array table.
@@ -54,17 +55,42 @@ module branch_predictor(
                 tmp_out_addr = out_addr_array[index];
                 tmp_out_valid = 1'b1;
                 
-                // TODO: this variable should be set to 0 after it's handled
+                // This variable is set to 0 after it's handled.
                 addr_found = 1'b1;
             end
         end
     end
     
     // (DECODE) Update in_addr_array if provided PC actually was a branch instruction.
-    // TODO: If the PC provided in FETCH was not a branch, this step should be ignored.
+    //		 If the PC provided in FETCH was not a branch, this step should be ignored.
     //       If the PC provided in FETCH was a branch and it appears in in_addr_array, this step should be ignored.
     //       If the PC probided in FETCH was a branch and it doesn't appear in in_addr_array, the PC provided
     //        in DECODE should be inserted in the in_addr_array and corresponding out_addr_array entry should be reset.
+	always @(posedge clk)
+	begin
+		if (d_is_branch == 1'b1)
+		begin
+			// A new branch instruction discovered. Insert it into the address table.
+			// TODO: Potential race condition with line 59
+			if (addr_found == 1'b0)
+			begin
+				addr_found = 1'b0;
+				
+				if (entry_to_replace == 4)
+				begin
+					entry_to_replace = 0;
+				end
+				
+				in_addr_array[entry_to_replace] = d_pc;
+				out_addr_array[entry_to_replace] = 31'b0;
+				
+				entry_to_replace = entry_to_replace + 1;
+				
+			end
+			// Otherwise ignore this step.
+		end
+		// Otherwise ignore this step.
+	end
     
     // (EXEC) Update given branch's state machine according to result of the branch instruction.
     // TODO: Two-bit state machine should be implemented and its state should be changed appropriately.
