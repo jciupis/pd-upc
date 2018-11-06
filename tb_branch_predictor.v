@@ -49,25 +49,16 @@ module tb_branch_predictor(
     begin
         loop_index = loop_index + 1;
         
-        d_is_branch = 1'b0;       // Clear DECODE flag.
+        d_is_branch = 1'b0;       // Clear DECODE flag indicating if the instruction was a branch.
         x_predict_res = 1'b0;     // Clear EXEC feedback flag.
         d_pc = f_pc;              // DECODE PC is the PC from previous FETCH stage.
         f_pc = f_pc + 1;          // Fetch next instruction.
         
-        if (loop_index == 1)
-        begin
-            d_is_branch = 1'b1;   // Every fourth instruction is a branch.
-        end
-        
-        if (loop_index == 3)
-        begin
-            x_predict_res = 1'b1; // Two clocks after every branch instruction positive feedback follows.
-        end 
-        
-        if (loop_index == 4)
-        begin
-            loop_index = 0;       // Wrap loop index after every 4 iterations.
-        end
+        case (loop_index)
+        1: d_is_branch = 1'b1;    // Every fourth instruction is a branch.
+        3: x_predict_res = 1'b1;  // Two clocks after every branch instruction positive feedback follows.
+        4: loop_index = 0;        // Wrap up after every 4 iterations.
+        endcase
         
     end
     
