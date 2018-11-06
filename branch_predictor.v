@@ -35,7 +35,8 @@ module branch_predictor(
     reg [31:0] out_addr_array [3:0]; // Table of predicted target branches for the stored PC values.
     reg [31:0] tmp_out_addr = 31'b0; // Helper address of a temporary target branch.
     reg tmp_out_valid = 1'b0;        // Helper flag that indicates if a prediction is valid.
-    reg addr_found = 1'b0;           // Flag that indicates if a given PC appears in the in_addr_array table.
+    reg f_addr_found = 1'b0;         // Flag that indicates if a given PC appears in the in_addr_array table (FETCH)
+    reg d_addr_found = 1'b0;         // Flag that indicates if a given PC appears in the in_addr_array table (DECODE)
 	integer entry_to_replace = 0;	 // Index of address table entry to replace.
     
     
@@ -56,7 +57,7 @@ module branch_predictor(
                 tmp_out_valid = 1'b1;
                 
                 // This variable is set to 0 after it's handled.
-                addr_found = 1'b1;
+                f_addr_found = 1'b1;  // If found, then we don't need to re-check it in DECODE stage
             end
         end
     end
@@ -72,9 +73,9 @@ module branch_predictor(
 		begin
 			// A new branch instruction discovered. Insert it into the address table.
 			// TODO: Potential race condition with line 59
-			if (addr_found == 1'b0)
+			if (d_addr_found == 1'b0)
 			begin
-				addr_found = 1'b0;
+				d_addr_found = 1'b0;
 				
 				if (entry_to_replace == 4)
 				begin
@@ -90,6 +91,8 @@ module branch_predictor(
 			// Otherwise ignore this step.
 		end
 		// Otherwise ignore this step.
+
+		d_addr_found = f_addr_found;
 	end
     
     // (EXEC) Update given branch's state machine according to result of the branch instruction.
