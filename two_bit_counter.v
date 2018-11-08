@@ -3,9 +3,11 @@
 module two_bit_counter(
 	input clk,
 	input feedback,		      // Flag that indicates if an executed branch instruction was taken (1) or not taken (0).
-	input set,                // Flag that indicates that the entry pointed to by index should be updated.
+	input get,                // Flag that indicates that the entry pointed to by get_index should be returned.
+	input [7:0] get_index,    // Index of an entry to read the state machine.
+	input set,                // Flag that indicates that the entry pointed to by set_index should be updated.
 	input [7:0] set_index,    // Index of an entry to update.
-	input reset,              // Flag that indicates that the entry pointed to by index should be reset.
+	input reset,              // Flag that indicates that the entry pointed to by reset_index should be reset.
 	input [7:0] reset_index,  // Index of an entry to reset.
 	output prediction	      // Flag that indicates if the branch is predicted to be taken (1) or not taken (0).
 );
@@ -44,6 +46,6 @@ begin
 end
 
 // TODO: Allow for returning a proper prediction by adding more inputs (get + get_index ?). 
-assign prediction = 1'b0;
+assign prediction = state[get_index][1];
 
 endmodule
