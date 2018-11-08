@@ -15,13 +15,16 @@ module branch_predictor(
     reg [31:0] f_out_addr = 31'b0;   // Address of target branch predicted in FETCH stage.
     reg f_out_valid = 1'b0;          // Flag that indicates if a prediction performed in FETCH stage is valid.
     reg f_addr_found = 1'b0;         // Flag that indicates if a PC from FETCH stage appears in the in_addr_array table.
+    reg [7:0] f_addr_index = 7'b0;   // Index of an entry in the state machine to read state/prediction.
+    reg f_addr_get = 0;              // Flag that indicates if the f_addr_index entry shoud be read.
     reg d_addr_found = 1'b0;         // Latched f_addr_found flag available in DECODE stage.
     reg d_fsm_reset = 1'b0;          // Flag that indicates that a given state machine entry should be reset.
     reg [7:0] d_fsm_index = 7'b0;    // Index of an entry in state machine to modify.
     reg x_branch_processed = 1'b0;   // Flag that indicates that a branch instruction was processed and execution feedback is valid.
     reg x_fsm_set = 1'b0;            // Flag that indicates that a given state machine entry should be updated.
     reg [7:0] x_fsm_index = 7'b0;    // Index of an entry in state machine to update in EXEC stage.
-    integer entry_to_replace = 0;	 // Index of address table entry to replace.
+    wire fsm_prediction;             // Gets the output of the predictor state machine.
+    integer entry_to_replace = 0;    // Index of address table entry to replace.
 
     // Predictor's variables.
     reg [31:0] in_addr_array [3:0];  // Table of stored PC values containing a branch instruction.
@@ -30,11 +33,13 @@ module branch_predictor(
     (
         .clk(clk),
         .feedback(x_predict_res),
+        .get(f_addr_get),
+        .get_index(f_addr_index),
         .set(x_fsm_set),
         .set_index(x_fsm_index),
         .reset(d_fsm_reset),
         .reset_index(d_fsm_index),
-        .prediction()
+        .prediction(fsm_prediction)
     );
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,11 +55,15 @@ module branch_predictor(
         // Iterate over stored PC values to check for provided PC.
         for (index = 0; index < 3; index = index + 1)
         begin
+			//f_addr_found = 1'b0;
             if (f_pc == in_addr_array[index])
             begin
                 // TODO: Make a proper prediction utilizing the state machine.
+                f_addr_index = index;
+                f_addr_get = 1'b1;
+
                 f_out_addr = out_addr_array[index];
-                f_out_valid = 1'b1;
+                f_out_valid = fsm_prediction;   // TODO: check that I'm not drunk
                 
                 // This variable is set to 0 after it's handled.
                 f_addr_found = 1'b1;
