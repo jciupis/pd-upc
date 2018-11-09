@@ -122,7 +122,7 @@ module tb_branch_predictor(
     branch_predictor DUT
     (
         .clk(clk),
-        .target_addr(target_addr),
+        .target_addr(d_target_addr),
         .f_pc(f_pc),
         .d_pc(d_pc),
         .d_is_branch(d_is_branch),

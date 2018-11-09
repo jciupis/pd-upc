@@ -100,7 +100,7 @@ module branch_predictor(
 				// Initialize the predictor for the specified address.
 				in_addr_array[entry_to_replace] = d_pc;
 				// TODO: Actually decode the target address to put it here instead of a 0.
-				out_addr_array[entry_to_replace] = 31'b0;
+				out_addr_array[entry_to_replace] = target_addr;
 				d_fsm_index = entry_to_replace;
 				d_fsm_reset = 1'b1;
 				
