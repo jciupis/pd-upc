@@ -15,14 +15,14 @@ module branch_predictor(
     reg [31:0] f_out_addr = 31'b0;   // Address of target branch predicted in FETCH stage.
     reg f_out_valid = 1'b0;          // Flag that indicates if a prediction performed in FETCH stage is valid.
     reg f_addr_found = 1'b0;         // Flag that indicates if a PC from FETCH stage appears in the in_addr_array table.
-    reg [7:0] f_addr_index = 7'b0;   // Index of an entry in the state machine to read state/prediction.
+    reg [7:0] f_addr_index = 8'b0;   // Index of an entry in the state machine to read state/prediction.
     reg f_addr_get = 0;              // Flag that indicates if the f_addr_index entry shoud be read.
     reg d_addr_found = 1'b0;         // Latched f_addr_found flag available in DECODE stage.
     reg d_fsm_reset = 1'b0;          // Flag that indicates that a given state machine entry should be reset.
-    reg [7:0] d_fsm_index = 7'b0;    // Index of an entry in state machine to modify.
+    reg [7:0] d_fsm_index = 8'b0;    // Index of an entry in state machine to modify.
     reg x_branch_processed = 1'b0;   // Flag that indicates that a branch instruction was processed and execution feedback is valid.
     reg x_fsm_set = 1'b0;            // Flag that indicates that a given state machine entry should be updated.
-    reg [7:0] x_fsm_index = 7'b0;    // Index of an entry in state machine to update in EXEC stage.
+    reg [7:0] x_fsm_index = 8'b0;    // Index of an entry in state machine to update in EXEC stage.
     wire fsm_prediction;             // Gets the output of the predictor state machine.
     integer entry_to_replace = 0;    // Index of address table entry to replace.
 
@@ -49,11 +49,11 @@ module branch_predictor(
     always @(posedge clk)
     begin
         // Initialize temporary outputs.
-        f_out_addr <= 31'b0;
+        f_out_addr <= 32'b0;
         f_out_valid <= 1'b0;
         
         // Iterate over stored PC values to check for provided PC.
-        for (index = 0; index < 3; index = index + 1)
+        for (index = 0; index < 4; index = index + 1)
         begin
 			//f_addr_found = 1'b0;
             if (f_pc == in_addr_array[index])

@@ -15,6 +15,14 @@ module two_bit_counter(
 // TODO: make this parameterizable
 reg [1:0] state [3:0];        // Array of predictor's state machines; each entry corresponds to a single PC stored in the predictor.
 
+integer index = 0;
+
+initial
+begin
+for (index = 0; index < 4; index = index + 1)
+    state[index] = 2'b01;
+end
+
 // Resetting process.
 always @(posedge clk)
 begin
