@@ -15,7 +15,7 @@ module branch_predictor(
     reg [31:0] f_out_addr = 31'b0;   // Address of target branch predicted in FETCH stage.
     reg f_out_valid = 1'b0;          // Flag that indicates if a prediction performed in FETCH stage is valid.
     reg f_addr_found = 1'b0;         // Flag that indicates if a PC from FETCH stage appears in the in_addr_array table.
-    reg [7:0] f_fsm_index = 8'b0;   // Index of an entry in the state machine to read state/prediction.
+    reg [7:0] f_fsm_index = 8'b0;    // Index of an entry in the state machine to read state/prediction.
     reg f_addr_get = 0;              // Flag that indicates if the f_addr_index entry shoud be read.
     reg d_addr_found = 1'b0;         // Latched f_addr_found flag available in DECODE stage.
     reg d_fsm_reset = 1'b0;          // Flag that indicates that a given state machine entry should be reset.
@@ -45,7 +45,9 @@ module branch_predictor(
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // (FETCH) Return a prediction if provided PC appears in the in_addr_array table. //////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    integer index;
+    integer index_f;
+    integer index_d;
+
     always @(posedge clk)
     begin
         // Initialize temporary outputs.
@@ -54,22 +56,22 @@ module branch_predictor(
         f_addr_found = 1'b0;
         f_addr_get = 1'b0;
         // Iterate over stored PC values to check for provided PC.
-        for (index = 0; index < 4; index = index + 1)
+        for (index_f = 0; index_f < 4; index_f = index_f + 1)
         begin
-            if (f_pc == in_addr_array[index])
+            if (f_pc == in_addr_array[index_f])
             begin
                 // Utilize the state machine.
-                f_fsm_index = index;
+                f_fsm_index = index_f;
                 f_addr_get = 1'b1;
 
-                f_out_addr = out_addr_array[index];
+                f_out_addr = out_addr_array[index_f];
                 f_out_valid = fsm_prediction;   // TODO: check that I'm not drunk
                 
                 // This variable is set to 0 after it's handled.
                 f_addr_found = 1'b1;
                 
                 // Latch index of the state machine entry to be updated when the EXEC stage feedback is provided.
-                x_fsm_index = index;
+                x_fsm_index = index_f;
             end
         end
     end
@@ -80,11 +82,21 @@ module branch_predictor(
 	always @(posedge clk)
 	begin
 	    d_fsm_reset = 1'b0;
+	    d_addr_found = 1'b0;
+	    //x_branch_processed = d_is_branch;
 	    
 		if (d_is_branch == 1'b1)
 		begin
-		    // EXEC stage feedback is valid.
 		    x_branch_processed = 1'b1;
+		    for (index_d = 0; index_d < 4; index_d = index_d + 1)
+                   begin
+                       if (d_pc == in_addr_array[index_d])
+                       begin
+                           d_addr_found = 1'b1;
+
+                       end
+                   end
+		    // EXEC stage feedback is valid.
 		    
 			// A new branch instruction discovered. Insert it into the address table.
 			if (d_addr_found == 1'b0)
@@ -115,7 +127,7 @@ module branch_predictor(
 		end
 		// Otherwise ignore this step.
 
-		d_addr_found = f_addr_found;
+		//d_addr_found = f_addr_found;
 	end
     
     ////////////////////////////////////////////////////////////////////////////////////////////////
