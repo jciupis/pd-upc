@@ -15,14 +15,14 @@ module branch_predictor(
     reg [31:0] f_out_addr = 31'b0;   // Address of target branch predicted in FETCH stage.
     reg f_out_valid = 1'b0;          // Flag that indicates if a prediction performed in FETCH stage is valid.
     reg f_addr_found = 1'b0;         // Flag that indicates if a PC from FETCH stage appears in the in_addr_array table.
-    reg [7:0] f_addr_index = 8'b0;   // Index of an entry in the state machine to read state/prediction.
+    reg [7:0] f_fsm_index = 8'b0;   // Index of an entry in the state machine to read state/prediction.
     reg f_addr_get = 0;              // Flag that indicates if the f_addr_index entry shoud be read.
     reg d_addr_found = 1'b0;         // Latched f_addr_found flag available in DECODE stage.
     reg d_fsm_reset = 1'b0;          // Flag that indicates that a given state machine entry should be reset.
     reg [7:0] d_fsm_index = 8'b0;    // Index of an entry in state machine to modify.
     reg x_branch_processed = 1'b0;   // Flag that indicates that a branch instruction was processed and execution feedback is valid.
     reg x_fsm_set = 1'b0;            // Flag that indicates that a given state machine entry should be updated.
-    reg [7:0] x_fsm_index = 8'b0;    // Index of an entry in state machine to update in EXEC stage.
+    reg [7:0] x_fsm_index = 8'b0;    // Index of an entry in state machine to update in EXEC stage. NOTE: We probably need an array of those!!!
     wire fsm_prediction;             // Gets the output of the predictor state machine.
     integer entry_to_replace = 0;    // Index of address table entry to replace.
 
@@ -34,7 +34,7 @@ module branch_predictor(
         .clk(clk),
         .feedback(x_predict_res),
         .get(f_addr_get),
-        .get_index(f_addr_index),
+        .get_index(f_fsm_index),
         .set(x_fsm_set),
         .set_index(x_fsm_index),
         .reset(d_fsm_reset),
@@ -52,13 +52,14 @@ module branch_predictor(
         f_out_addr <= 32'b0;
         f_out_valid <= 1'b0;
         f_addr_found = 1'b0;
+        f_addr_get = 1'b0;
         // Iterate over stored PC values to check for provided PC.
         for (index = 0; index < 4; index = index + 1)
         begin
             if (f_pc == in_addr_array[index])
             begin
                 // Utilize the state machine.
-                f_addr_index = index;
+                f_fsm_index = index;
                 f_addr_get = 1'b1;
 
                 f_out_addr = out_addr_array[index];
@@ -98,7 +99,7 @@ module branch_predictor(
 				
 				// Initialize the predictor for the specified address.
 				in_addr_array[entry_to_replace] = d_pc;
-				// TODO: Actually decode the target address to put it here instead of a 0.
+				// Get the decoded branch target address
 				out_addr_array[entry_to_replace] = target_addr;
 				d_fsm_index = entry_to_replace;
 				d_fsm_reset = 1'b1;
