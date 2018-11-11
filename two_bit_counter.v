@@ -17,11 +17,14 @@ reg [1:0] state [3:0];        // Array of predictor's state machines; each entry
 
 integer index = 0;
 
+// If we skip this initialization step, the starting values are X, see if this will be useful in a slightly different design
 initial
 begin
 for (index = 0; index < 4; index = index + 1)
     state[index] = 2'b01;
 end
+
+// TODO: Consider if we should check bits set and get/reset (any combination) enabling together, which is a bad input
 
 // Resetting process.
 always @(posedge clk)
