@@ -51,14 +51,13 @@ module branch_predictor(
         // Initialize temporary outputs.
         f_out_addr <= 32'b0;
         f_out_valid <= 1'b0;
-        
+        f_addr_found = 1'b0;
         // Iterate over stored PC values to check for provided PC.
         for (index = 0; index < 4; index = index + 1)
         begin
-			//f_addr_found = 1'b0;
             if (f_pc == in_addr_array[index])
             begin
-                // TODO: Make a proper prediction utilizing the state machine.
+                // Utilize the state machine.
                 f_addr_index = index;
                 f_addr_get = 1'b1;
 
@@ -89,7 +88,7 @@ module branch_predictor(
 			// A new branch instruction discovered. Insert it into the address table.
 			if (d_addr_found == 1'b0)
 			begin
-				d_addr_found = 1'b0;
+				//d_addr_found = 1'b0; //Why is that?
 				
 				// Wrap up after the end of the array.
 				if (entry_to_replace == 4)

@@ -40,24 +40,27 @@ module tb_branch_predictor(
         1:
         begin
             case(f_pc)
-            'h100c: 
+            'h1008: // Changed because as 'reg' it will appear on the next cycle 
                 begin
                 d_is_branch = 1'b1; // For PC 0x1008
                 d_target_addr = 'h1010;
                 end
-            'h1010: 
+            'h100c:
                 begin
                 d_is_branch = 1'b1; // For PC 0x100c
                 d_target_addr = 'h1014;
                 end
              
-            'h1014: x_predict_res = 0;
-            'h1018: 
+            'h1010: x_predict_res = 0;
+            'h1014:
                 begin
                 d_is_branch = 1'b1; // For PC 0x1014
                 d_target_addr = 'h1000;
                 x_predict_res = 1; // For PC 0x100c
                 //d_pc = f_pc; //emulate normal behaviour
+                end
+            'h1018:
+                begin
                 f_pc = 'h1010; // Jump to 1014 but we will do +4
                 jump_tmp = 1;
                 inst_visit_cnt = 2;
