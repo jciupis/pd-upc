@@ -70,7 +70,11 @@ module tb_branch_predictor(
         2:
         begin
            case(f_pc)
-            //'h1014: expect to find address in table! 
+            'h1014:
+                begin
+                d_is_branch = 1'b1; //expect to find address in table!
+                d_target_addr = 'h1000;
+                end
             'h1020:
                 begin
                 x_predict_res = 1; //For PC 0x1014
@@ -86,11 +90,15 @@ module tb_branch_predictor(
             'h100c:
                 begin
                 jump_tmp = 1;
+                d_is_branch = 1'b1;
+                d_target_addr = 'h1014;
                 f_pc = 'h1014;
                 end
             'h1014:
                 begin
                 jump_tmp = 1;
+                d_is_branch = 1'b1;
+                d_target_addr = 'h1000;
                 f_pc = 'h1000;
                 inst_visit_cnt = 0;
                 end
@@ -106,11 +114,14 @@ module tb_branch_predictor(
             'h1008: x_predict_res = 1; //feedback for inst 1014
             'h100c: 
                 begin
+                d_is_branch = 1'b1;
+                d_target_addr = 'h1014;
                 jump_tmp = 1;
                 f_pc = 'h1014;
                 end
             'h1014:
                 begin
+                d_is_branch = 1'b1;
                 jump_tmp = 1;
                 f_pc = 'h1000;
                 end
