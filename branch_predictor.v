@@ -12,8 +12,7 @@ module branch_predictor(
     );
 
     // Helper variables.
-    reg [31:0] f_out_addr = 31'b0;   // Address of target branch predicted in FETCH stage.
-    reg f_out_valid = 1'b0;          // Flag that indicates if a prediction performed in FETCH stage is valid.
+    reg [31:0] f_out_addr = 32'b0;   // Address of target branch predicted in FETCH stage.
     reg f_addr_found = 1'b0;         // Flag that indicates if a PC from FETCH stage appears in the in_addr_array table.
     reg [7:0] f_fsm_index = 8'b0;    // Index of an entry in the state machine to read state/prediction.
     reg f_addr_get = 0;              // Flag that indicates if the f_addr_index entry shoud be read.
@@ -22,7 +21,11 @@ module branch_predictor(
     reg [7:0] d_fsm_index = 8'b0;    // Index of an entry in state machine to modify.
     reg x_branch_processed = 1'b0;   // Flag that indicates that a branch instruction was processed and execution feedback is valid.
     reg x_fsm_set = 1'b0;            // Flag that indicates that a given state machine entry should be updated.
-    reg [7:0] x_fsm_index = 8'b0;    // Index of an entry in state machine to update in EXEC stage. NOTE: We probably need an array of those!!!
+    reg [7:0] x_fsm_index = 8'b0;    // Index of an entry in state machine to update in EXEC stage. 
+    reg [7:0] x_fsm_index_buf = 8'b0;// Index of an entry in state machine to update in EXEC stage. Buffer
+    reg x_fb_buf_p1 = 1'b0;          // We are experiencing timing issues between the feedback, set and set_index
+    reg x_fb_buf_p2 = 1'b0;          // signals, so until we find a better solution we work around it with this
+    reg x_fb_buf_p3 = 1'b0;          // not-so-elegant buffering.
     wire fsm_prediction;             // Gets the output of the predictor state machine.
     integer entry_to_replace = 0;    // Index of address table entry to replace.
 
@@ -32,11 +35,11 @@ module branch_predictor(
     two_bit_counter state_machine    // The branch predictor's 2bit state machine.
     (
         .clk(clk),
-        .feedback(x_predict_res),
+        .feedback(x_fb_buf_p3),
         .get(f_addr_get),
         .get_index(f_fsm_index),
         .set(x_fsm_set),
-        .set_index(x_fsm_index),
+        .set_index(x_fsm_index_buf),
         .reset(d_fsm_reset),
         .reset_index(d_fsm_index),
         .prediction(fsm_prediction)
@@ -51,10 +54,10 @@ module branch_predictor(
     always @(posedge clk)
     begin
         // Initialize temporary outputs.
-        f_out_addr <= 32'b0;
-        f_out_valid <= 1'b0;
+        //f_out_addr = 32'b0;   // Not needed
         f_addr_found = 1'b0;
         f_addr_get = 1'b0;
+        x_fsm_index_buf = x_fsm_index;
         // Iterate over stored PC values to check for provided PC.
         for (index_f = 0; index_f < 4; index_f = index_f + 1)
         begin
@@ -65,8 +68,7 @@ module branch_predictor(
                 f_addr_get = 1'b1;
 
                 f_out_addr = out_addr_array[index_f];
-                f_out_valid = fsm_prediction;   // TODO: check that I'm not drunk
-                
+
                 // This variable is set to 0 after it's handled.
                 f_addr_found = 1'b1;
                 
@@ -117,7 +119,7 @@ module branch_predictor(
 				d_fsm_reset = 1'b1;
 				
 				// Latch index of the state machine entry to be updated when the EXEC stage feedback is provided.
-				x_fsm_index = entry_to_replace;
+				//x_fsm_index = entry_to_replace;
 				
 				// Select next entry to be replaced.
 				entry_to_replace = entry_to_replace + 1;
@@ -126,8 +128,6 @@ module branch_predictor(
 			// Otherwise ignore this step.
 		end
 		// Otherwise ignore this step.
-
-		//d_addr_found = f_addr_found;
 	end
     
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -136,6 +136,9 @@ module branch_predictor(
     always @(posedge clk)
     begin
         x_fsm_set = 1'b0;
+        x_fb_buf_p3 = x_fb_buf_p2;
+        x_fb_buf_p2 = x_fb_buf_p1;
+        x_fb_buf_p1 = x_predict_res;
 
         // Branch instruction was processed. Predictor's state machine must be updated.
         if (x_branch_processed == 1'b1)
@@ -148,6 +151,6 @@ module branch_predictor(
     end
     
     assign f_predict_addr  = f_out_addr;
-    assign f_predict_valid = f_out_valid;
+    assign f_predict_valid = f_addr_found & fsm_prediction;
 
 endmodule
