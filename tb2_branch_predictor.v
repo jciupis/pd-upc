@@ -13,11 +13,12 @@ module tb_branch_predictor(
     reg x_predict_res = 1'b0;
     wire [31:0] f_predict_addr;
     wire f_predict_valid;
+    reg providing_fb = 1'b0;    // For debug purposes, to see the correct (relative) signal timings 
     
     integer loop_index = 0;
     integer inst_visit_cnt = 1;  //dirty way to separate the first & second visit of specific cmds
     integer jump_tmp = 0;
-    //integer s4 = 5; //Unused for the time being
+    //integer s4 = 5; //Unused for the time being TODO: emulate actual register values to end the loop!
     //integer s5 = 1;
     
     initial
@@ -32,7 +33,7 @@ module tb_branch_predictor(
     always @(posedge clk)
     begin
         loop_index = loop_index + 1;
-        
+        providing_fb = 1'b0;
         d_is_branch = 1'b0;       // Clear DECODE flag indicating if the instruction was a branch.
         x_predict_res = 1'b0;     // Clear EXEC feedback flag.
         d_pc = f_pc;              // DECODE PC is the PC from previous FETCH stage.        
@@ -57,11 +58,12 @@ module tb_branch_predictor(
                 d_is_branch = 1'b1; // For PC 0x1014
                 d_target_addr = 'h1000;
                 x_predict_res = 1; // For PC 0x100c
+                providing_fb = 1'b1;
                 //d_pc = f_pc; //emulate normal behaviour
                 end
             'h1018:
                 begin
-                f_pc = 'h1010; // Jump to 1014 but we will do +4
+                f_pc = 'h1014; // Jump to 1014
                 jump_tmp = 1;
                 inst_visit_cnt = 2;
                 end
@@ -74,10 +76,13 @@ module tb_branch_predictor(
                 begin
                 d_is_branch = 1'b1; //expect to find address in table!
                 d_target_addr = 'h1000;
+                x_predict_res = 0;
+                providing_fb = 1'b1;
                 end
-            'h1020:
+            'h101c:
                 begin
                 x_predict_res = 1; //For PC 0x1014
+                providing_fb = 1'b1;
                 inst_visit_cnt = 3; //reset this as we can go to default case
                 jump_tmp = 1;
                 f_pc = 'h1000;
@@ -109,9 +114,20 @@ module tb_branch_predictor(
             case (f_pc)
             // TODO:Use a waiting_feedback counter to determine what to do in 1000-4
             'h1000: // feedback for inst 1008 available)
+                begin
                 x_predict_res = 0;
-            'h1004: x_predict_res = 1; //feedback for inst 100c
-            'h1008: x_predict_res = 1; //feedback for inst 1014
+                providing_fb = 1'b1;
+                end
+            'h1004:
+                begin
+                x_predict_res = 1; //feedback for inst 100c
+                providing_fb = 1'b1;
+                end
+            'h1008:
+                begin
+                x_predict_res = 1; //feedback for inst 1014
+                providing_fb = 1'b1;
+                end
             'h100c: 
                 begin
                 d_is_branch = 1'b1;
