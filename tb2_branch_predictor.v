@@ -1,8 +1,6 @@
 `timescale 1ns / 1ps
 
-module tb_branch_predictor(
-
-    );
+module tb_branch_predictor();
 
     reg clk = 1'b0;
     
