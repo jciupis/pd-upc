@@ -34,6 +34,7 @@ module tb_branch_predictor();
         providing_fb = 1'b0;
         d_is_branch = 1'b0;       // Clear DECODE flag indicating if the instruction was a branch.
         x_predict_res = 1'b0;     // Clear EXEC feedback flag.
+        providing_fb = 1'b0;
         d_pc = f_pc;              // DECODE PC is the PC from previous FETCH stage.        
         case (inst_visit_cnt)
         1:
@@ -50,12 +51,16 @@ module tb_branch_predictor();
                 d_target_addr = 'h1014;
                 end
              
-            'h1010: x_predict_res = 0;
+            'h1010:
+                begin
+                x_predict_res = 0;
+                providing_fb = 1'b1;    // For PC 0x1008
+                end
             'h1014:
                 begin
                 d_is_branch = 1'b1; // For PC 0x1014
                 d_target_addr = 'h1000;
-                x_predict_res = 1; // For PC 0x100c
+                x_predict_res = 1;  // For PC 0x100c
                 providing_fb = 1'b1;
                 //d_pc = f_pc; //emulate normal behaviour
                 end
@@ -74,7 +79,7 @@ module tb_branch_predictor();
                 begin
                 d_is_branch = 1'b1; //expect to find address in table!
                 d_target_addr = 'h1000;
-                x_predict_res = 0;
+                x_predict_res = 1;  // for first execution of 1014
                 providing_fb = 1'b1;
                 end
             'h101c:
@@ -90,6 +95,7 @@ module tb_branch_predictor();
         3:
         begin
             case(f_pc)
+            'h1008: d_is_branch = 1'b1;
             'h100c:
                 begin
                 jump_tmp = 1;
@@ -103,6 +109,7 @@ module tb_branch_predictor();
                 d_is_branch = 1'b1;
                 d_target_addr = 'h1000;
                 f_pc = 'h1000;
+                providing_fb = 1'b1;
                 inst_visit_cnt = 0;
                 end
             endcase
@@ -113,7 +120,7 @@ module tb_branch_predictor();
             // TODO:Use a waiting_feedback counter to determine what to do in 1000-4
             'h1000: // feedback for inst 1008 available)
                 begin
-                x_predict_res = 0;
+                x_predict_res = 1;
                 providing_fb = 1'b1;
                 end
             'h1004:
@@ -123,8 +130,7 @@ module tb_branch_predictor();
                 end
             'h1008:
                 begin
-                x_predict_res = 1; //feedback for inst 1014
-                providing_fb = 1'b1;
+                x_predict_res = 0; //feedback for inst 1014
                 end
             'h100c: 
                 begin

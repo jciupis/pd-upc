@@ -20,12 +20,14 @@ module branch_predictor(
     reg d_fsm_reset = 1'b0;          // Flag that indicates that a given state machine entry should be reset.
     reg [7:0] d_fsm_index = 8'b0;    // Index of an entry in state machine to modify.
     reg x_branch_processed = 1'b0;   // Flag that indicates that a branch instruction was processed and execution feedback is valid.
-    reg x_fsm_set = 1'b0;            // Flag that indicates that a given state machine entry should be updated.
-    reg [7:0] x_fsm_index = 8'b0;    // Index of an entry in state machine to update in EXEC stage. 
-    reg [7:0] x_fsm_index_buf = 8'b0;// Index of an entry in state machine to update in EXEC stage. Buffer
-    reg x_fb_buf_p1 = 1'b0;          // We are experiencing timing issues between the feedback, set and set_index
-    reg x_fb_buf_p2 = 1'b0;          // signals, so until we find a better solution we work around it with this
-    reg x_fb_buf_p3 = 1'b0;          // not-so-elegant buffering.
+    reg x_fsm_set [2:0];             // Flag that indicates that a given state machine entry should be updated. Array for buffering/delay
+    reg [7:0] x_fsm_index [2:0];     // Index of an entry in state machine to update in EXEC stage, with the array acting as a buffer
+    reg x_feedback = 1'b0;           // Variable to latch/buffer the x_predict_res feedback from the CPU
+                                     // We are experiencing timing issues between the feedback, set and set_index
+                                     // signals, so until we find a better solution we work around it with this
+                                     // not-so-elegant buffering. This happens because the predictor expects the feedback
+                                     // cycles earlier than the CPU is ready to provide it.
+
     wire fsm_prediction;             // Gets the output of the predictor state machine.
     integer entry_to_replace = 0;    // Index of address table entry to replace.
 
@@ -35,11 +37,11 @@ module branch_predictor(
     two_bit_counter state_machine    // The branch predictor's 2bit state machine.
     (
         .clk(clk),
-        .feedback(x_fb_buf_p3),
+        .feedback(x_feedback),
         .get(f_fsm_get),
         .get_index(f_fsm_index),
-        .set(x_fsm_set),
-        .set_index(x_fsm_index_buf),
+        .set(x_fsm_set[2]),
+        .set_index(x_fsm_index[2]),
         .reset(d_fsm_reset),
         .reset_index(d_fsm_index),
         .prediction(fsm_prediction)
@@ -50,13 +52,24 @@ module branch_predictor(
     ////////////////////////////////////////////////////////////////////////////////////////////////
     integer f_index;
     integer d_index;
+    integer index;
+
+    initial
+    begin
+    for (index = 0; index < 3; index = index + 1)
+        begin
+        x_fsm_set[index] = 1'b0;
+        x_fsm_index[index] = 8'b0;
+        end
+    end
 
     always @(posedge clk)
     begin
         // Initialize temporary outputs.
         f_addr_found = 1'b0;
         f_fsm_get = 1'b0;
-        x_fsm_index_buf = x_fsm_index;
+        x_fsm_index[2] = x_fsm_index[1];
+        x_fsm_index[1] = x_fsm_index[0];
 
         // Iterate over stored PC values to check for provided PC.
         for (f_index = 0; f_index < 4; f_index = f_index + 1)
@@ -71,9 +84,7 @@ module branch_predictor(
 
                 // This variable is set to 0 after it's handled.
                 f_addr_found = 1'b1;
-                
-                // Latch index of the state machine entry to be updated when the EXEC stage feedback is provided.
-                x_fsm_index = f_index;
+
             end
         end
     end
@@ -85,7 +96,6 @@ module branch_predictor(
     begin
         d_fsm_reset = 1'b0;
         d_addr_found = 1'b0;
-        //x_branch_processed = d_is_branch;
 
         if (d_is_branch == 1'b1)
         begin
@@ -97,6 +107,8 @@ module branch_predictor(
                 if (d_pc == in_addr_array[d_index])
                 begin
                     d_addr_found = 1'b1;
+                    // Latch index of the state machine entry to be updated when the EXEC stage feedback is provided.
+                    x_fsm_index[0] = d_index;
                 end
             end
 
@@ -116,10 +128,7 @@ module branch_predictor(
                 out_addr_array[entry_to_replace] = d_target_addr;
                 d_fsm_index = entry_to_replace;
                 d_fsm_reset = 1'b1;
-
-                // Latch index of the state machine entry to be updated when the EXEC stage feedback is provided.
-                // Why not? :D
-                // x_fsm_index = entry_to_replace;
+                x_fsm_index[0] = entry_to_replace;
 
                 // Select next entry to be replaced.
                 entry_to_replace = entry_to_replace + 1;
@@ -135,10 +144,10 @@ module branch_predictor(
     ////////////////////////////////////////////////////////////////////////////////////////////////
     always @(posedge clk)
     begin
-        x_fsm_set = 1'b0;
-        x_fb_buf_p3 = x_fb_buf_p2;
-        x_fb_buf_p2 = x_fb_buf_p1;
-        x_fb_buf_p1 = x_predict_res;
+        x_fsm_set[2] = x_fsm_set[1];
+        x_fsm_set[1] = x_fsm_set[0];
+        x_fsm_set[0] = 1'b0;
+        x_feedback = x_predict_res;
 
         // Branch instruction was processed. Predictor's state machine must be updated.
         if (x_branch_processed == 1'b1)
@@ -146,7 +155,7 @@ module branch_predictor(
             x_branch_processed = 1'b0;
 
             // Index of the entry to be updated is already set.
-            x_fsm_set = 1'b1;
+            x_fsm_set[0] = 1'b1;
         end
     end
 
