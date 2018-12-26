@@ -13,14 +13,14 @@ module two_bit_counter(
 );
 
 // TODO: make this parameterizable
-reg [1:0] state [3:0];        // Array of predictor's state machines; each entry corresponds to a single PC stored in the predictor.
+reg [1:0] state [63:0];       // Array of predictor's state machines; each entry corresponds to a single PC stored in the predictor.
 
 integer index = 0;
 
 // If we skip this initialization step, the starting values are X, see if this will be useful in a slightly different design
 initial
 begin
-for (index = 0; index < 4; index = index + 1)
+for (index = 0; index < 64; index = index + 1)
     state[index] = 2'b01;
 end
 

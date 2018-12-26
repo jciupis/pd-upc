@@ -34,14 +34,15 @@ module branch_predictor(
     // Predictor's variables.
     reg [31:0] in_addr_array [3:0];  // Table of stored PC values containing a branch instruction.
     reg [31:0] out_addr_array [3:0]; // Table of predicted target branches for the stored PC values.
+    reg [3:0] history_reg = 4'b0;    // Keep the last feedbacks to use as select in the next prediction.
     two_bit_counter state_machine    // The branch predictor's 2bit state machine.
     (
         .clk(clk),
         .feedback(x_feedback),
         .get(f_fsm_get),
         .get_index(f_fsm_index),
-        .set(x_fsm_set[2]),
-        .set_index(x_fsm_index[2]),
+        .set(x_fsm_set[1]),
+        .set_index(x_fsm_index[1]),
         .reset(d_fsm_reset),
         .reset_index(d_fsm_index),
         .prediction(fsm_prediction)
@@ -50,13 +51,13 @@ module branch_predictor(
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // (FETCH) Return a prediction if provided PC appears in the in_addr_array table. //////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    integer f_index;
-    integer d_index;
+    reg [2:0] f_index;
+    reg [2:0] d_index;
     integer index;
 
     initial
     begin
-    for (index = 0; index < 3; index = index + 1)
+    for (index = 0; index < 64; index = index + 1)
         begin
         x_fsm_set[index] = 1'b0;
         x_fsm_index[index] = 8'b0;
@@ -77,7 +78,7 @@ module branch_predictor(
             if (f_pc == in_addr_array[f_index])
             begin
                 // Utilize the state machine.
-                f_fsm_index = f_index;
+                f_fsm_index = f_index << 3 + history_reg;
                 f_fsm_get = 1'b1;
 
                 f_out_addr = out_addr_array[f_index];
@@ -100,7 +101,7 @@ module branch_predictor(
         if (d_is_branch == 1'b1)
         begin
             // EXEC stage feedback is valid.
-            x_branch_processed = 1'b1;
+            x_branch_processed <= 1'b1;
 
             for (d_index = 0; d_index < 4; d_index = d_index + 1)
             begin
@@ -108,7 +109,7 @@ module branch_predictor(
                 begin
                     d_addr_found = 1'b1;
                     // Latch index of the state machine entry to be updated when the EXEC stage feedback is provided.
-                    x_fsm_index[0] = d_index;
+                    x_fsm_index[0] = d_index << 3 + history_reg;
                 end
             end
 
@@ -128,7 +129,7 @@ module branch_predictor(
                 out_addr_array[entry_to_replace] = d_target_addr;
                 d_fsm_index = entry_to_replace;
                 d_fsm_reset = 1'b1;
-                x_fsm_index[0] = entry_to_replace;
+                x_fsm_index[0] = entry_to_replace << 3 + history_reg;
 
                 // Select next entry to be replaced.
                 entry_to_replace = entry_to_replace + 1;
@@ -152,10 +153,14 @@ module branch_predictor(
         // Branch instruction was processed. Predictor's state machine must be updated.
         if (x_branch_processed == 1'b1)
         begin
-            x_branch_processed = 1'b0;
+            x_branch_processed <= 1'b0;
 
             // Index of the entry to be updated is already set.
             x_fsm_set[0] = 1'b1;
+        end
+        if (x_fsm_set[1] == 1'b1)
+        begin   // Use the set situation to update the history counter as well
+            history_reg <= (history_reg << 1) + x_predict_res;
         end
     end
 
