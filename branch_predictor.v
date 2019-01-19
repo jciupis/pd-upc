@@ -78,7 +78,7 @@ module branch_predictor(
             if (f_pc == in_addr_array[f_index])
             begin
                 // Utilize the state machine.
-                f_fsm_index = f_index << 3 + history_reg;
+                f_fsm_index = f_index << 4 + history_reg;
                 f_fsm_get = 1'b1;
 
                 f_out_addr = out_addr_array[f_index];
@@ -109,7 +109,7 @@ module branch_predictor(
                 begin
                     d_addr_found = 1'b1;
                     // Latch index of the state machine entry to be updated when the EXEC stage feedback is provided.
-                    x_fsm_index[0] = d_index << 3 + history_reg;
+                    x_fsm_index[0] = d_index << 4 + history_reg;
                 end
             end
 
@@ -129,7 +129,7 @@ module branch_predictor(
                 out_addr_array[entry_to_replace] = d_target_addr;
                 d_fsm_index = entry_to_replace;
                 d_fsm_reset = 1'b1;
-                x_fsm_index[0] = entry_to_replace << 3 + history_reg;
+                x_fsm_index[0] = entry_to_replace << 4 + history_reg;
 
                 // Select next entry to be replaced.
                 entry_to_replace = entry_to_replace + 1;
